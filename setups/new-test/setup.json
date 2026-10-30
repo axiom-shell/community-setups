@@ -1,0 +1,16 @@
+{
+  "title": "New test",
+  "author": "travishepworth",
+  "description": "test of new pipeline for community setups",
+  "tags": [
+    "dark"
+  ],
+  "tested": [
+    "sway",
+    "niri",
+    "hyprland"
+  ],
+  "fonts": [
+    "Inter"
+  ]
+}
