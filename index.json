@@ -1,0 +1,46 @@
+{
+  "format": 1,
+  "generated": "2026-10-30T11:20:43+00:00",
+  "setups": [
+    {
+      "id": "new-test",
+      "title": "New test",
+      "author": "travishepworth",
+      "description": "test of new pipeline for community setups",
+      "about": "",
+      "tags": [
+        "dark"
+      ],
+      "tested": [
+        "sway",
+        "niri",
+        "hyprland"
+      ],
+      "fonts": [
+        "Inter"
+      ],
+      "theme": "rose-pine",
+      "configVersion": 84,
+      "wallpaper": null,
+      "updated": "2026-10-30T20:20:21+09:00",
+      "page": "https://github.com/axiom-shell/community-setups/tree/main/setups/new-test",
+      "files": {
+        "config": {
+          "path": "setups/new-test/config.json",
+          "sha256": "72d509ae18a5a4cfa9967ae57fb3158797d01b54b92d0342a4896bd838ff942c",
+          "size": 36985
+        },
+        "screenshot": {
+          "path": "setups/new-test/screenshot.png",
+          "sha256": "003f2d97780925b753c7ba4d33456d14fb22be4cb044d8fd54afa1028b4c8ecd",
+          "size": 1315189
+        },
+        "thumb": {
+          "path": "setups/new-test/thumb.webp",
+          "sha256": "554efc74617a9a832cd651356f65f3032155b1523620ab240289f2f6b3fd7b83",
+          "size": 20706
+        }
+      }
+    }
+  ]
+}
