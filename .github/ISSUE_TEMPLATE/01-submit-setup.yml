@@ -8,7 +8,7 @@ body:
       value: |
         Thanks for sharing! When you submit (or edit) this issue, a workflow checks your setup and opens a pull request for you. Its result is commented below. **Edit the issue** to fix anything it finds.
 
-        In axiom: **Settings → Maintenance → Community setups → Export and submit…** (or **Share → Export** with both *Include* switches **off**). That writes `~/axiom-….json`, holding only your look and layout. See the [guide](https://github.com/axiom-shell/community-setups/blob/main/CONTRIBUTING.md) for the details.
+        In axiom: **Settings → Maintenance → Community setups → Export and submit…** (or **Share → Export** with both *Include* switches **off**). That writes `~/axiom-….json` in your home folder, holding only your look and layout: drag that file into **Exported config** below. See the [guide](https://github.com/axiom-shell/community-setups/blob/main/CONTRIBUTING.md) for the details.
   - type: input
     id: name
     attributes:
@@ -17,6 +17,7 @@ body:
       placeholder: Glass Harbor
     validations:
       required: true
+      min_length: 2
   - type: input
     id: id
     attributes:
@@ -27,19 +28,20 @@ body:
     id: description
     attributes:
       label: Description
-      description: "One line, at most 140 characters. What it looks like, or what it's for."
+      description: "One line, 10 to 140 characters. What it looks like, or what it's for."
     validations:
       required: true
+      min_length: 10
   - type: textarea
     id: about
     attributes:
       label: About it
-      description: "Optional. The idea behind it, its inspiration, tips for using it. Markdown."
+      description: "Optional. The idea behind it, its inspiration, tips for using it. Markdown, at most 2000 characters."
   - type: dropdown
     id: tags
     attributes:
       label: Tags
-      description: "Up to 6."
+      description: "Pick 1 to 6."
       multiple: true
       options: [dark, light, minimal, dense, colorful, monochrome, floating, docked, vertical, sidebar, multi-bar, pills, powerline, outline, transparent, glass, rounded, sharp, retro, laptop, ultrawide, multi-monitor, keyboard-driven, dock]
     validations:
@@ -57,36 +59,32 @@ body:
     id: fonts
     attributes:
       label: Fonts
-      description: "The font families it uses, comma-separated (Settings → Look & Feel → Font). Users without one see a fallback."
+      description: "Optional. Font families it uses besides the one set in the export (Settings → Look & Feel → Font), which is added for you. Comma-separated; users without one see a fallback."
       placeholder: Inter, JetBrainsMono Nerd Font
-    validations:
-      required: true
   - type: textarea
     id: config
     attributes:
-      label: config.json
-      description: "Paste the exported file's contents, or drag the file in."
-      render: json
+      label: Exported config
+      description: "Drag in the `axiom-….json` file the export wrote (or click here, then attach it). Pasting its contents works too."
     validations:
       required: true
   - type: textarea
     id: screenshot
     attributes:
       label: Screenshot
-      description: "Drag in one screenshot of the whole screen with this setup, unedited (PNG, JPEG or WebP, 1280–7680 px wide; one over 3 MB is converted to WebP). Nothing private on screen."
+      description: "Drag in one screenshot of the whole screen with this setup, unedited: PNG, JPEG or WebP, 1280–7680 px wide, 4:3 to 32:9 (one over 3 MB is converted to WebP). Nothing private on screen."
     validations:
       required: true
   - type: textarea
     id: theme
     attributes:
-      label: theme.json
-      description: "Optional: leave it empty if you use a theme axiom ships. Only for a theme you made, or one generated from your wallpaper (in ~/.local/state/axiom/themes/). Paste it or drag it in. It's renamed after your setup."
-      render: json
+      label: Theme
+      description: "Optional: leave it empty if you use a theme axiom ships. Only for a theme you made, or one generated from your wallpaper (`~/.local/state/axiom/themes/<name>.json`): drag that file in, or paste its contents. It's renamed after your setup."
   - type: textarea
     id: wallpaper
     attributes:
       label: Wallpaper
-      description: "Optional. Drag in the wallpaper (at most 10 MB). Users choose whether to use it. Only one you made or one whose license allows sharing."
+      description: "Optional. Drag in the wallpaper: PNG, JPEG or WebP, at most 10 MB. Users choose whether to use it. Only one you made or one whose license allows sharing; fill in the two fields below with it."
   - type: input
     id: license
     attributes:
@@ -102,7 +100,7 @@ body:
     attributes:
       label: Checklist
       options:
-        - label: I exported it with **Share → Export**, keybinds, apps and commands off.
+        - label: I exported it with **Export and submit…** (or **Share → Export**, both *Include* switches off).
           required: true
         - label: The screenshot shows this exact setup, unedited, with nothing private on screen (notifications, names, emails).
           required: true

@@ -135,8 +135,8 @@ class Axiom:
 # "takeover" for x-takeover). A scope axiom adds later gets the fallback.
 SCOPE_MESSAGES = {
     "takeover": "takes something over on the PC (compositor mode, locker, idle, polkit, greeter) and is never shared",
-    "personal": "personal (keybinds, apps, preferences): export again with personal settings off",
-    "commands": "runs a command as you: export again with commands off",
+    "personal": "personal (keybinds, apps, preferences): export again from an up-to-date axiom, personal settings off",
+    "commands": "runs a command as you: export again from an up-to-date axiom, commands off",
     "machine": "belongs to the PC it was made on (monitor names, wallpapers, accounts, paths), never shared",
 }
 
