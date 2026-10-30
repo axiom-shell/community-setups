@@ -6,9 +6,10 @@
 Run by .github/workflows/submission.yml. The body is untrusted: it's only
 parsed (JSON, images through Pillow), files are fetched only from GitHub's
 own attachment hosts, sizes are capped, and nothing from it reaches a
-shell. Prints the setup id; exits 2 with a message for the submitter when
-the issue can't be turned into a folder (scripts/check.sh then reports
-everything else).
+shell. Prints the setup id; exits 2 with a message for the submitter (inert
+Markdown, for the bot's comment) when the issue can't be turned into a
+folder, and 3 when something failed that isn't theirs to fix
+(scripts/check.sh then reports everything else).
 """
 
 import json
@@ -19,11 +20,11 @@ import sys
 import urllib.request
 from urllib.parse import urlparse
 
-from setups import ID_RE, SCREENSHOT_MAX, SETUPS, WALLPAPER_MAX, write_json
+from setups import ID_RE, SCREENSHOT_MAX, SETUPS, WALLPAPER_MAX, inert, set_theme_name, with_header, write_json
 
 # Issue form labels (.github/ISSUE_TEMPLATE/01-submit-setup.yml)
 FIELDS = {
-    "title": "Title",
+    "name": "Title",
     "id": "Setup id",
     "description": "Description",
     "about": "About it",
@@ -184,7 +185,10 @@ def image_field(text, what, required, max_bytes):
     if len(data) > max_bytes:
         # GitHub re-encodes an attached PNG as 32-bit, often larger than the
         # submitter's file: shrink it here, losslessly if that's enough
-        data, ext = shrunk(data, max_bytes), ".webp"
+        try:
+            data, ext = shrunk(data, max_bytes), ".webp"
+        except Exception:  # too many pixels for Pillow or WebP (16383 px a side)
+            raise Refused(f"{what} is too large to convert: attach a smaller one")
     return data, ext
 
 
@@ -212,7 +216,7 @@ def slug(text):
 
 def build(body, author):
     found = sections(body)
-    title = field(found, "title")
+    title = field(found, "name")
     setup_id = field(found, "id") or slug(title)
     if not ID_RE.match(setup_id) or len(setup_id) > 40:
         raise Refused(f"setup id {setup_id!r}: lowercase letters, digits and dashes, at most 40")
@@ -237,9 +241,11 @@ def build(body, author):
 
     # A bundled theme is named after the setup, whatever the export said
     if theme is not None:
-        config.setdefault("Appearance", {})["theme"] = f"community/{setup_id}"
+        if not isinstance(config.get("Appearance", {}), dict):
+            raise Refused("config.json: `Appearance` must be an object: export it again")
+        set_theme_name(config, f"community/{setup_id}")
         theme.setdefault("author", author)
-    config = {"_example": {"title": manifest["title"], "description": manifest["description"]}, **{k: v for k, v in config.items() if k != "_example"}}
+    config = with_header(config, manifest["title"], manifest["description"])
 
     folder = SETUPS / setup_id
     if folder.exists():
@@ -270,8 +276,13 @@ def main():
     try:
         print(build(body, author))
     except Refused as e:
-        print(str(e), file=sys.stderr)
+        print(inert(e), file=sys.stderr)
         sys.exit(2)
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(3)
 
 
 if __name__ == "__main__":

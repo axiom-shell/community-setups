@@ -1,8 +1,8 @@
 name: Validate
 
 # A setup is checked when it's posted or changed, against axiom's main as
-# it is that day (schema, themes and migration code from a fresh clone),
-# and never again: axiom migrates an older setup's config when someone
+# it is that day (its edge build and the commit it was built from, fetched
+# by scripts/axiom.sh), and never again: axiom migrates an older setup's config when someone
 # applies it, as it does any import. So each run checks only the setups
 # the change touches (HEAD^1 is the base: a pull request's merge commit,
 # a squash merge on main, or a submission's one commit on its branch).
@@ -24,11 +24,11 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     # The org allows only its own SHA-pinned actions, so no actions here:
-    # plain git and gh, in Arch for the same Qt as axiom's CI
+    # plain git and gh, in Arch like axiom's CI
     container: archlinux:latest
     steps:
       - name: Install tools
-        run: pacman -Syu --noconfirm --needed git python python-pillow python-jsonschema qt6-declarative github-cli
+        run: pacman -Syu --noconfirm --needed git python python-pillow python-jsonschema python-yaml github-cli
 
       - name: Checkout
         env:
@@ -41,13 +41,12 @@ jobs:
           git -c http.extraheader="AUTHORIZATION: basic $auth" fetch -q --depth=2 origin "$GITHUB_SHA"
           git checkout -q FETCH_HEAD
 
-      - name: Clone axiom (main)
-        run: |
-          git clone -q --depth=1 https://github.com/axiom-shell/axiom .axiom
-          echo "axiom main at $(git -C .axiom rev-parse --short HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Fetch axiom (edge)
+        run: scripts/axiom.sh | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Validator tests
         run: |
+          python3 tests/test_templates.py
           python3 tests/test_validate.py
           python3 tests/test_issue.py
 

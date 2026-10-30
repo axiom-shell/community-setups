@@ -23,7 +23,7 @@ Applying a setup first saves your current one as `before-<id>`, so going back is
 
 ## What a setup can hold
 
-Only the look. Every setting in axiom has a scope (`look`, `personal`, `commands` or `machine`), and a setup holds only `look` settings: CI rejects anything else, and axiom drops anything else when it applies one. CI asks axiom itself which is which (its `ConfigExamples.pick`), so the rules are always axiom's current ones.
+Only the look. Every setting in axiom has a scope (`look`, `personal`, `commands` or `machine`), and a setup holds only `look` settings: CI rejects anything else, and axiom drops anything else when it applies one. CI asks axiom's own binary which is which, so the rules are always axiom's current ones.
 
 | Never in a setup | Why |
 |---|---|
@@ -49,25 +49,28 @@ The [contributing guide](CONTRIBUTING.md) has the details. In short:
 2. Go to **Settings → Maintenance → Community setups → Export and submit…** (or **Share → Export** with both *Include* switches off).
 3. Take a screenshot of the whole screen.
 4. Submit it either way:
-   - **No git needed**: open a [Submit a setup](../../issues/new?template=01-submit-setup.yml) issue, paste the export and drag the screenshot in. A pull request is made for you.
+   - **No git needed**: open a [Submit a setup](../../issues/new?template=01-submit-setup.yml) issue (the button opens it), and drag the export and the screenshot in. A pull request is made for you.
    - **As a pull request**: add `setups/<id>/` with `setup.json`, `config.json` and `screenshot.png`.
 
-Every submission is checked against axiom's current `main` (its schema, themes and config migrations), then reviewed by a maintainer.
+Every submission is checked with axiom's current `main` (its own binary: schema, themes and config migrations), then reviewed by a maintainer.
 
 ## For maintainers
 
 | | |
 |---|---|
-| `scripts/check.sh [ID…]` | Everything CI checks: each config is loaded through axiom's own migration and `ConfigExamples.pick` (Qt 6's `qmltestrunner` on an axiom checkout, required), then `scripts/validate.py` |
-| `scripts/check.sh --upgrade ID…` | Rewrites each setup's `config.json` as an Export from that axiom would: migrated to its config version, without what it no longer shares, defaults left out. Run it after a config schema change |
-| `scripts/validate.py --fix ID` | Writes `config.json`'s `_example` header from `setup.json` |
+| `scripts/check.sh [ID…]` | Everything CI checks: each config is loaded by axiom's own binary (`axiom config share`, which migrates, validates and picks what Export would keep; `axiom config validate` until axiom has it), then `scripts/validate.py`'s checks of the folder |
+| `scripts/check.sh --upgrade ID…` | Rewrites each setup's `config.json` as that axiom exports it: migrated to its config format and version, without what it no longer shares, defaults left out. Run it after a config schema change (needs `axiom config share`) |
+| `scripts/check.sh --fix ID` | Writes `config.json`'s header (`meta`, or a format-1 file's `_example`) from `setup.json` |
+| `scripts/axiom.sh [DIR]` | Fetches the axiom the checks use into `.axiom/`: the `edge` prerelease's binary (checked against its `SHA256SUMS`) and a checkout of the commit it was built from |
 | `scripts/build_index.py OUT` | The catalog axiom reads and its gallery page (published as the [`catalog`](../../tree/catalog) branch) |
-| `tests/test_validate.py`, `tests/test_issue.py` | The checks' own tests |
-| `.github/workflows/` | `validate` (the setups a pull request, merge or submission touches), `publish` (catalog + gallery after a merge), `submission` (issue → pull request, then `validate` on its branch) |
+| `tests/test_templates.py`, `tests/test_validate.py`, `tests/test_issue.py` | The checks' own tests (the issue forms parse and match the parser; the checks on fixture setups; issue bodies to folders) |
+| `.github/workflows/` | `validate` (the setups a pull request, merge or submission touches), `publish` (catalog + gallery after a merge), `submission` (issue → pull request, then `validate` on its branch; a `Setup:` issue opened without the form gets a comment pointing at it) |
 
-The axiom checkout comes from `--axiom DIR`, else `$AXIOM_DIR`, else `.axiom/`. CI clones axiom's `main`, so a setup is checked against axiom as it is the day the setup is posted or changed, and never again: axiom migrates an older setup's config when someone applies it, as it does any import. After a big schema change, `scripts/check.sh --upgrade` brings the setups up to date in one pull request.
+Without `--axiom DIR` or `$AXIOM_DIR`, `check.sh` runs `scripts/axiom.sh`, so CI and a local run use the same axiom: `main` as of its last `edge` build. With a checkout of your own, the binary is `$AXIOM_BIN`, else `axiom` on `PATH` (build it from that checkout). A setup is checked when it's posted or changed, and never again: axiom converts an older setup's config when someone applies it, as it does any import. After a big schema change, `scripts/check.sh --upgrade` brings the setups up to date in one pull request.
 
-Nothing here hard-codes axiom's config: sections, scopes (`x-scope`, `x-scopeIf`, `x-monitorRef`, `x-takeover`), migrations and themes all come from the checkout. Only the theme file's shape (`config/themes/template/theme.json`) and the catalog's `format` (axiom's `CommunityCatalog.format`, `scripts/build_index.py`'s `FORMAT`) are shared by convention. A run checks only the setups it touches (`workflow_dispatch` with `all` checks every one).
+Nothing here knows axiom's config: what a setup may hold, its migrations and validity all come from axiom's binary, and the themes from its checkout. Only the config's header (`format`, `version`, `meta`), `Appearance.theme`'s name and font family, the theme file's shape (`config/themes/template/theme.json`) and the catalog's `format` (axiom's `CommunityCatalog.format`, `scripts/build_index.py`'s `FORMAT`) are read here. A run checks only the setups it touches (`workflow_dispatch` with `all` checks every one).
+
+Until axiom has `axiom config share` ([its known issue](https://github.com/axiom-shell/axiom/blob/main/docs/dev/issues.md#the-community-setups-ci-cant-run-axioms-pick)), a setup's config is migrated and validated but not scope-checked: each check says so, and the reviewer checks it holds only the look. axiom applies only the look from a community setup either way.
 
 `main` is protected: changes land through a squashed pull request with the `validate` check passing and a code owner's approval (admins may merge their own). The `catalog` branch can't be deleted. CI force-pushes it.
 

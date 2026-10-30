@@ -1,5 +1,5 @@
 name: Submit a setup
-description: Share your axiom setup without using git. Fill this in and a pull request is made for you.
+description: "Share your axiom setup without using git. Fill this in and a pull request is made for you."
 title: "Setup: "
 labels: [submission]
 body:
@@ -10,10 +10,10 @@ body:
 
         In axiom: **Settings → Maintenance → Community setups → Export and submit…** (or **Share → Export** with both *Include* switches **off**). That writes `~/axiom-….json`, holding only your look and layout. See the [guide](https://github.com/axiom-shell/community-setups/blob/main/CONTRIBUTING.md) for the details.
   - type: input
-    id: title
+    id: name
     attributes:
       label: Title
-      description: Its name in the gallery, at most 40 characters.
+      description: "Its name in the gallery, at most 40 characters."
       placeholder: Glass Harbor
     validations:
       required: true
@@ -21,25 +21,25 @@ body:
     id: id
     attributes:
       label: Setup id
-      description: Optional. Lowercase letters, digits and dashes. Left empty, it's made from the title. To update a setup of yours, give its id.
+      description: "Optional. Lowercase letters, digits and dashes. Left empty, it's made from the title. To update a setup of yours, give its id."
       placeholder: glass-harbor
   - type: input
     id: description
     attributes:
       label: Description
-      description: One line, at most 140 characters. What it looks like, or what it's for.
+      description: "One line, at most 140 characters. What it looks like, or what it's for."
     validations:
       required: true
   - type: textarea
     id: about
     attributes:
       label: About it
-      description: Optional. The idea behind it, its inspiration, tips for using it. Markdown.
+      description: "Optional. The idea behind it, its inspiration, tips for using it. Markdown."
   - type: dropdown
     id: tags
     attributes:
       label: Tags
-      description: Up to 6.
+      description: "Up to 6."
       multiple: true
       options: [dark, light, minimal, dense, colorful, monochrome, floating, docked, vertical, sidebar, multi-bar, pills, powerline, outline, transparent, glass, rounded, sharp, retro, laptop, ultrawide, multi-monitor, keyboard-driven, dock]
     validations:
@@ -48,7 +48,7 @@ body:
     id: tested
     attributes:
       label: Tested on
-      description: The compositors you ran it on.
+      description: "The compositors you ran it on."
       multiple: true
       options: [Hyprland, niri, sway]
     validations:
@@ -57,7 +57,7 @@ body:
     id: fonts
     attributes:
       label: Fonts
-      description: The font families it uses, comma-separated (Settings → Look & Feel → Font). Users without one see a fallback.
+      description: "The font families it uses, comma-separated (Settings → Look & Feel → Font). Users without one see a fallback."
       placeholder: Inter, JetBrainsMono Nerd Font
     validations:
       required: true
@@ -65,7 +65,7 @@ body:
     id: config
     attributes:
       label: config.json
-      description: Paste the exported file's contents, or drag the file in.
+      description: "Paste the exported file's contents, or drag the file in."
       render: json
     validations:
       required: true
@@ -73,30 +73,30 @@ body:
     id: screenshot
     attributes:
       label: Screenshot
-      description: Drag in one screenshot of the whole screen with this setup, unedited (PNG, JPEG or WebP, 1280–7680 px wide; one over 3 MB is converted to WebP). Nothing private on screen.
+      description: "Drag in one screenshot of the whole screen with this setup, unedited (PNG, JPEG or WebP, 1280–7680 px wide; one over 3 MB is converted to WebP). Nothing private on screen."
     validations:
       required: true
   - type: textarea
     id: theme
     attributes:
       label: theme.json
-      description: Optional: leave it empty if you use a theme axiom ships. Only for a theme you made, or one generated from your wallpaper (in ~/.local/state/axiom/themes/). Paste it or drag it in. It's renamed after your setup.
+      description: "Optional: leave it empty if you use a theme axiom ships. Only for a theme you made, or one generated from your wallpaper (in ~/.local/state/axiom/themes/). Paste it or drag it in. It's renamed after your setup."
       render: json
   - type: textarea
     id: wallpaper
     attributes:
       label: Wallpaper
-      description: Optional. Drag in the wallpaper (at most 10 MB). Users choose whether to use it. Only one you made or one whose license allows sharing.
+      description: "Optional. Drag in the wallpaper (at most 10 MB). Users choose whether to use it. Only one you made or one whose license allows sharing."
   - type: input
     id: license
     attributes:
       label: Wallpaper license
-      description: With a wallpaper. An SPDX id (CC0-1.0, CC-BY-4.0, …), or `own` for your own work.
+      description: "With a wallpaper. An SPDX id (CC0-1.0, CC-BY-4.0, …), or `own` for your own work."
   - type: input
     id: source
     attributes:
       label: Wallpaper source
-      description: With a wallpaper. Where it comes from (an https link), or `own`.
+      description: "With a wallpaper. Where it comes from (an https link), or `own`."
   - type: checkboxes
     id: checklist
     attributes:

@@ -1,16 +1,21 @@
 """Shared checks for community setups.
 
-The scope rules are axiom's own: ci/tst_Setups.qml runs each config through
-axiom's ConfigMigration and ConfigExamples.pick (components/methods/), and
-what pick leaves out comes back here as `dropped`. So what this repo accepts
-is exactly the part axiom would apply from it, and nothing here hard-codes
-a config section, a scope or a schema annotation.
+What a config may hold is axiom's to say: its binary loads each one
+(`axiom config share`, or `config validate` on an axiom without it), which
+migrates any version, validates it, and answers what Export would keep and
+what it leaves out (`dropped`, by scope). So what this repo accepts is
+exactly the part axiom would apply from it, and no config section, scope or
+schema annotation is written down here. Only the config's header (`meta`,
+or format 1's `_example`) and `Appearance.theme` are read, to match them
+with setup.json and theme.json.
 """
 
 import hashlib
 import json
 import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,14 +29,15 @@ IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 
 # Limits, in bytes and pixels
 SCREENSHOT_MAX = 3 * 1024 * 1024
-EXTRA_MAX = 2 * 1024 * 1024
 WALLPAPER_MAX = 10 * 1024 * 1024
 THEME_MAX = 16 * 1024
 CONFIG_MAX = 256 * 1024
 SCREENSHOT_MIN_WIDTH = 1280
 SCREENSHOT_MAX_WIDTH = 7680
 ASPECT_MIN, ASPECT_MAX = 1.3, 3.6  # 4:3 up to 32:9
-EXTRA_COUNT = 3
+# A config's format: 2 holds `format` and `meta`; format 1 (versions up to
+# 75) held `_example` and no `format`, and axiom still converts it
+FORMAT = 2
 
 
 class Report:
@@ -56,30 +62,73 @@ class Report:
 # ---------------------------------------------------------------- axiom ---
 
 
-class Axiom:
-    """What a checkout of axiom says: its schema, version and themes."""
+class AxiomFailed(Exception):
+    """axiom itself failed (not the setup): no answer, or one it can't give"""
 
-    def __init__(self, path):
-        self.path = Path(path)
-        schema_file = self.path / "config" / "json" / "config.schema.json"
-        if not schema_file.is_file():
-            raise SystemExit(
-                f"{schema_file} not found: point --axiom (or AXIOM_DIR) at a checkout of axiom"
-            )
-        self.schema = json.loads(schema_file.read_text())
-        self.version = self.schema["properties"]["version"]["default"]
+
+class Axiom:
+    """axiom's checkout (its themes, and the schema --tree builds) and its
+    binary (scripts/axiom.sh fetches both, the binary as `.edge/axiom`)."""
+
+    def __init__(self, path, binary=None):
+        self.path = Path(path).resolve()
         themes = self.path / "config" / "themes"
-        self.themes = sorted(p.stem for p in themes.glob("*.json"))
-        self.theme_template = json.loads((themes / "template" / "theme.json").read_text())
+        template = themes / "template" / "theme.json"
+        if not template.is_file():
+            raise SystemExit(f"{template} not found: point --axiom (or AXIOM_DIR) at a checkout of axiom")
+        self.themes = sorted(p.stem for p in themes.glob("*.json") if not p.name.endswith(".schema.json"))
+        self.theme_template = json.loads(template.read_text())
+        self.binary = binary
+        self.can_share = False
+        self.version = None
+        self.config_version = None
+        if binary:
+            self.can_share = "share" in self._run("config", "--help").stdout.split("commands:", 1)[-1]
+            self.version = (self._run("version").stdout.strip().splitlines() or ["axiom"])[0]
+            try:
+                schema = json.loads(self._run("schema", "build", "--tree", str(self.path), "-o", "-").stdout)
+                self.config_version = schema["properties"]["version"]["default"]
+            except (ValueError, KeyError, TypeError):
+                raise AxiomFailed("axiom schema build gave no schema")
 
     @staticmethod
-    def locate(arg=None):
+    def locate(arg=None, binary=None):
         for candidate in (arg, os.environ.get("AXIOM_DIR"), ROOT / ".axiom"):
             if candidate and Path(candidate).is_dir():
-                return Axiom(candidate)
+                path = Path(candidate)
+                for found in (binary, os.environ.get("AXIOM_BIN"), path / ".edge" / "axiom", shutil.which("axiom")):
+                    if found and Path(found).is_file() and os.access(found, os.X_OK):
+                        return Axiom(path, str(found))
+                return Axiom(path)
         raise SystemExit(
-            "No axiom checkout: pass --axiom DIR, set AXIOM_DIR, or clone axiom into .axiom/"
+            "No axiom checkout: run scripts/check.sh (it fetches one), pass --axiom DIR, or set AXIOM_DIR"
         )
+
+    def _run(self, *args):
+        try:
+            return subprocess.run([self.binary, *args], capture_output=True, text=True, timeout=120)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            raise AxiomFailed(f"{self.binary} {args[0]}: {e}")
+
+    def load(self, config_file):
+        """The config as axiom loads it: {valid: true, migrated, changes,
+        removed, scoped, and with `config share` config, dropped, secrets},
+        or {valid: false, issues: [{path, message}]}. AxiomFailed when axiom
+        gives neither."""
+        command = ["config", "share", "--places"] if self.can_share else ["config", "validate"]
+        run = self._run(*command, "--json", "--tree", str(self.path), str(config_file))
+        try:
+            answer = json.loads(run.stdout)
+        except ValueError:
+            answer = None
+        if not isinstance(answer, dict):
+            raise AxiomFailed(f"axiom {command[1]} exited {run.returncode} without an answer: {run.stderr.strip()[-500:]}")
+        error = answer.get("error")
+        if run.returncode == 1 and isinstance(error, dict) and error.get("kind") == "invalid_config":
+            return {"valid": False, "issues": error.get("issues") or [{"path": "", "message": error.get("message", "")}]}
+        if run.returncode != 0 or answer.get("valid") is not True:
+            raise AxiomFailed(f"axiom {command[1]} exited {run.returncode}: {(error or {}).get('message') or run.stderr.strip()[-500:]}")
+        return {**answer, "scoped": self.can_share}
 
 
 # Why axiom leaves a value out of a shared file, by its scope (x-scope, or
@@ -94,6 +143,48 @@ SCOPE_MESSAGES = {
 
 def scope_message(scope):
     return SCOPE_MESSAGES.get(scope, f"{scope!r} scope, which a shared setup never holds: export it again")
+
+
+def header_key(config):
+    """Where a config's title and description are: format 2's `meta`, or
+    format 1's `_example`"""
+    return "meta" if config.get("format") == FORMAT else "_example"
+
+
+def with_header(config, title, description):
+    """The config with its header set (first, as axiom writes it), the
+    other's removed"""
+    key = header_key(config)
+    head = {k: config[k] for k in ("format", "version") if k in config}
+    rest = {k: v for k, v in config.items() if k not in ("format", "version", "meta", "_example")}
+    return {**head, key: {"title": title, "description": description}, **rest}
+
+
+def theme_name(config):
+    """Appearance.theme's name: format 2's `{name}`, format 1's string"""
+    appearance = config.get("Appearance")
+    theme = appearance.get("theme") if isinstance(appearance, dict) else None
+    if isinstance(theme, dict):
+        theme = theme.get("name")
+    return theme
+
+
+def set_theme_name(config, name):
+    appearance = config.get("Appearance")
+    if not isinstance(appearance, dict):
+        appearance = config["Appearance"] = {}
+    if config.get("format") == FORMAT:
+        theme = appearance.get("theme")
+        appearance["theme"] = {**(theme if isinstance(theme, dict) else {}), "name": name}
+    else:
+        appearance["theme"] = name
+
+
+def inert(text):
+    """Text from a submission made inert Markdown for a bot's comment: no
+    @mention, no HTML, no image or link (the comment reads the same)"""
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace("@", "@\u200b").replace("](", "]\u200b(").replace("://", ":\u200b//"))
 
 
 # ---------------------------------------------------------------- files ---
@@ -209,9 +300,9 @@ def check_theme(theme, setup_id, manifest, axiom, report):
 
 
 def check_setup(folder, axiom, fix=False, loaded=None):
-    """All the checks for one setups/<id>/ folder. `loaded`: its entry from
-    ci/tst_Setups.qml (the config migrated, loaded and picked by axiom's own
-    code); without it the config's scopes aren't checked."""
+    """All the checks for one setups/<id>/ folder. `loaded`: Axiom.load's
+    answer for its config; without it the config is neither validated nor
+    scope-checked."""
     folder = Path(folder)
     setup_id = folder.name
     report = Report(setup_id)
@@ -229,7 +320,7 @@ def check_setup(folder, axiom, fix=False, loaded=None):
 
     allowed = {"setup.json", "config.json", "theme.json"}
     for entry in folder.iterdir():
-        if (entry.name in allowed and entry.is_file()) or (entry.name == "extra" and entry.is_dir()) or (entry.is_file() and entry.stem in ("screenshot", "wallpaper") and entry.suffix.lower() in IMAGE_EXTS):
+        if (entry.name in allowed and entry.is_file()) or (entry.is_file() and entry.stem in ("screenshot", "wallpaper") and entry.suffix.lower() in IMAGE_EXTS):
             continue
         report.error(f"unexpected file {entry.name!r}", entry.name)
 
@@ -257,16 +348,6 @@ def check_setup(folder, axiom, fix=False, loaded=None):
         report.error("a wallpaper needs `wallpaper.license` and `wallpaper.source` in setup.json")
     if manifest.get("wallpaper") and not walls:
         report.error("`wallpaper` is set but there's no wallpaper file")
-    extra = folder / "extra"
-    if extra.is_dir():
-        shots = sorted(extra.iterdir())
-        if len(shots) > EXTRA_COUNT:
-            report.error(f"at most {EXTRA_COUNT} extra screenshots", "extra")
-        for p in shots:
-            if not p.is_file() or p.suffix.lower() not in IMAGE_EXTS:
-                report.error(f"unexpected file {p.name!r}", f"extra/{p.name}")
-            else:
-                check_image(p, folder, report, EXTRA_MAX)
 
     # Config
     config_file = folder / "config.json"
@@ -278,55 +359,53 @@ def check_setup(folder, axiom, fix=False, loaded=None):
     config = load_json(config_file, report, "config.json")
     if not isinstance(config, dict):
         return report
-    version = config.get("version")
     # bool is an int in Python, but not a version to axiom
-    if type(version) is not int or version < 1:
+    if type(config.get("version")) is not int:
         report.error("no `version`: export it from axiom rather than copying config.json", "config.json")
-    elif version > axiom.version:
-        report.error(f"version {version} is newer than axiom main ({axiom.version})", "config.json")
 
     if loaded is not None:
-        if "exception" in loaded:
-            report.error(f"axiom can't load it: {loaded['exception']}", "config.json")
+        if not loaded["valid"]:
+            for issue in loaded["issues"]:
+                report.error(f"axiom refuses it: {issue['path'] or '(file)'}: {issue['message']}", "config.json")
             return report
-        if loaded["secrets"]:
-            report.error(f"holds secrets ({', '.join(loaded['secrets'])}): never share an API key; export again", "config.json")
-        for message in loaded["errors"]:
-            report.error(f"invalid once loaded: {message}", "config.json")
-        for message in loaded["applyErrors"]:
-            report.error(f"invalid once applied: {message}", "config.json")
-        for item in loaded["dropped"]:
+        for path in loaded.get("secrets") or []:
+            report.error(f"{path}: a secret (an API key or password): never share one, export again", "config.json")
+        for item in loaded.get("dropped") or []:
+            if item["path"].split(".")[0] in ("meta", "_example"):
+                continue  # the header, which Export writes itself
             report.error(f"{item['path']}: {scope_message(item['scope'])}", "config.json")
-        for path in loaded["removed"]:
-            if path != "_example":
-                report.warn(f"{path}: unknown in axiom {axiom.version} (after migrating): axiom ignores it", "config.json")
+        for path in loaded["removed"] or []:
+            if path not in ("_example", "meta"):
+                report.warn(f"{path}: unknown to axiom (after migrating), so it's ignored", "config.json")
+        if not loaded["scoped"]:
+            report.warn("not scope-checked: this axiom has no `axiom config share` yet, so a maintainer checks it holds only the look (axiom applies only the look either way)", "config.json")
 
     # The header: setup.json is the source of truth
+    key = header_key(config)
     header = {"title": manifest.get("title", ""), "description": manifest.get("description", "")}
-    if config.get("_example") != header:
+    if config.get(key) != header or ("meta" in config and "_example" in config):
         if fix:
-            config = {"_example": header, **{k: v for k, v in config.items() if k != "_example"}}
+            config = with_header(config, header["title"], header["description"])
             write_json(config_file, config)
         else:
-            report.error("`_example` must match setup.json's title and description (run scripts/validate.py --fix)", "config.json")
+            report.error(f"`{key}` must be setup.json's title and description, and nothing else (run scripts/check.sh --fix)", "config.json")
 
     # Theme
-    appearance = config.get("Appearance") if isinstance(config.get("Appearance"), dict) else {}
-    theme_name = appearance.get("theme")
+    name = theme_name(config)
     theme_file = folder / "theme.json"
     own = f"community/{setup_id}"
-    if isinstance(theme_name, str) and theme_name.startswith("generated/"):
-        report.error(f"Appearance.theme {theme_name!r} was generated from a wallpaper on your PC: copy it to theme.json and set the theme to {own!r}", "config.json")
-    elif isinstance(theme_name, str) and theme_name.startswith("community/"):
-        if theme_name != own:
-            report.error(f"Appearance.theme {theme_name!r}: a bundled theme is named {own!r}", "config.json")
+    if isinstance(name, str) and name.startswith("generated/"):
+        report.error(f"the theme {name!r} was generated from a wallpaper on your PC: copy it to theme.json and set the theme to {own!r}", "config.json")
+    elif isinstance(name, str) and name.startswith("community/"):
+        if name != own:
+            report.error(f"the theme {name!r}: a bundled theme is named {own!r}", "config.json")
         if not theme_file.is_file():
-            report.error(f"Appearance.theme is {own!r} but there's no theme.json", "config.json")
-    elif theme_name is not None and theme_name not in axiom.themes:
-        report.error(f"Appearance.theme {theme_name!r} isn't a theme axiom ships: bundle it as theme.json and set the theme to {own!r}", "config.json")
+            report.error(f"the theme is {own!r} but there's no theme.json", "config.json")
+    elif name is not None and name not in axiom.themes:
+        report.error(f"the theme {name!r} isn't one axiom ships: bundle it as theme.json and set the theme to {own!r}", "config.json")
     if theme_file.is_file():
-        if theme_name != own:
-            report.error(f"theme.json is bundled but Appearance.theme isn't {own!r}", "theme.json")
+        if name != own:
+            report.error(f"theme.json is bundled but the config's theme isn't {own!r}", "theme.json")
         if theme_file.stat().st_size > THEME_MAX:
             report.error("too large for a theme", "theme.json")
         theme = load_json(theme_file, report, "theme.json")
@@ -336,7 +415,8 @@ def check_setup(folder, axiom, fix=False, loaded=None):
             report.error("must be a JSON object", "theme.json")
 
     # Fonts
-    family = (appearance.get("font") or {}).get("family") if isinstance(appearance.get("font"), dict) else None
+    appearance = config.get("Appearance") if isinstance(config.get("Appearance"), dict) else {}
+    family = appearance.get("font").get("family") if isinstance(appearance.get("font"), dict) else None
     if family and family not in manifest.get("fonts", []):
         report.error(f"the config uses the font {family!r}: list it in `fonts`")
 

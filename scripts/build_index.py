@@ -21,7 +21,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from setups import ROOT, all_setups, images, sha256, symlinks
+from setups import ROOT, all_setups, images, sha256, symlinks, theme_name
 
 REPO = "axiom-shell/community-setups"
 CATALOG_URL = f"https://raw.githubusercontent.com/{REPO}/catalog/"
@@ -90,15 +90,8 @@ def build(out):
         if wall:
             shutil.copy2(wall, dest / wall.name)
             files["wallpaper"] = entry(out, base + wall.name)
-        extra = folder / "extra"
-        if extra.is_dir():
-            (dest / "extra").mkdir(exist_ok=True)
-            files["extra"] = []
-            for p in sorted(extra.iterdir()):
-                shutil.copy2(p, dest / "extra" / p.name)
-                files["extra"].append(entry(out, base + "extra/" + p.name))
 
-        theme = (config.get("Appearance") or {}).get("theme", "")
+        theme = theme_name(config)
         setups.append({
             "id": setup_id,
             "title": manifest["title"],
@@ -108,7 +101,7 @@ def build(out):
             "tags": manifest["tags"],
             "tested": manifest["tested"],
             "fonts": manifest["fonts"],
-            "theme": theme,
+            "theme": theme if isinstance(theme, str) else "",
             "configVersion": config["version"],
             "wallpaper": manifest.get("wallpaper"),
             "updated": updated(folder),

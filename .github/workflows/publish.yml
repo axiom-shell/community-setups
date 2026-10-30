@@ -25,7 +25,8 @@ jobs:
         run: pacman -Syu --noconfirm --needed git python python-pillow
 
       # Whole history without the blobs: the index dates each setup by its
-      # last commit
+      # last commit. The checkout and git log fetch blobs lazily, so the
+      # header is in the clone's config (this job runs only main's code)
       - name: Checkout
         env:
           TOKEN: ${{ github.token }}
@@ -34,7 +35,8 @@ jobs:
           git init -q .
           git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
           auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
-          git -c http.extraheader="AUTHORIZATION: basic $auth" fetch -q --filter=blob:none origin main
+          git config http.extraheader "AUTHORIZATION: basic $auth"
+          git fetch -q --filter=blob:none origin main
           git checkout -q -B main FETCH_HEAD
 
       - name: Build the catalog
