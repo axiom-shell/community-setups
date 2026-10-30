@@ -2,8 +2,9 @@ name: Submission
 
 # A "Submit a setup" issue becomes a pull request: the form's fields and
 # attachments are turned into setups/<id>/ (scripts/issue_to_setup.py),
-# checked like any pull request, and the result is commented on the issue.
-# Editing the issue runs it again and updates the same pull request.
+# checked like any pull request, and the result is commented on the issue
+# (one comment, edited on each run). Editing the issue runs it again and
+# updates the same pull request.
 #
 # The issue is untrusted input: it reaches the scripts only through env,
 # never through ${{ }} in a script, and the token is given only to the
@@ -25,13 +26,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A "Setup: …" issue opened without the form (a blank issue, or the form
+  # missing from the New issue page) isn't checked: say so, once, and
+  # point at the form rather than leave it unanswered
+  missed-form:
+    if: github.event.action == 'opened' && !contains(github.event.issue.labels.*.name, 'submission') && startsWith(github.event.issue.title, 'Setup')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Point at the form
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number }}
+          FORM: ${{ github.server_url }}/${{ github.repository }}/issues/new?template=01-submit-setup.yml
+        run: |
+          {
+            echo "Thanks for sharing! This issue wasn't opened with the **Submit a setup** form, so nothing checked it and no pull request was made."
+            echo
+            echo "Please submit it through the form instead: $FORM. It takes your exported file and screenshot, checks them and opens the pull request for you. Then close this issue."
+          } > "$RUNNER_TEMP/comment.md"
+          gh issue comment "$NUMBER" -R "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
+
   submit:
     if: contains(github.event.issue.labels.*.name, 'submission') && github.event.issue.state == 'open'
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
       - name: Install tools
-        run: pacman -Syu --noconfirm --needed git python python-pillow python-jsonschema qt6-declarative github-cli
+        run: pacman -Syu --noconfirm --needed git python python-pillow python-jsonschema github-cli
 
       - name: Checkout
         env:
@@ -43,8 +64,9 @@ jobs:
           auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
           git -c http.extraheader="AUTHORIZATION: basic $auth" fetch -q --depth=1 origin main
           git checkout -q -B main FETCH_HEAD
-          git clone -q --depth=1 https://github.com/axiom-dotfiles/axiom .axiom
 
+      # outcome: passed, failed (the submitter's to fix: report.md says
+      # what) or error (ours: the log says what)
       - name: Build the setup from the issue
         id: build
         env:
@@ -55,9 +77,13 @@ jobs:
           id=$(python3 scripts/issue_to_setup.py 2> "$RUNNER_TEMP/refused.txt")
           status=$?
           set -e
-          if [ $status -ne 0 ]; then
+          if [ $status -eq 2 ]; then
             { echo "### ❌ Couldn't read the submission"; echo; cat "$RUNNER_TEMP/refused.txt"; } > "$RUNNER_TEMP/report.md"
-            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "outcome=failed" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [ $status -ne 0 ]; then
+            cat "$RUNNER_TEMP/refused.txt"
+            echo "outcome=error" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"
@@ -65,10 +91,14 @@ jobs:
           GITHUB_STEP_SUMMARY="$RUNNER_TEMP/report.md" scripts/check.sh "$id"
           status=$?
           set -e
-          echo "ok=$([ $status -eq 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          case $status in
+            0) echo "outcome=passed" >> "$GITHUB_OUTPUT" ;;
+            1) echo "outcome=failed" >> "$GITHUB_OUTPUT" ;;
+            *) echo "outcome=error" >> "$GITHUB_OUTPUT" ;;
+          esac
 
       - name: Open or update the pull request
-        if: steps.build.outputs.ok == 'true'
+        if: steps.build.outputs.outcome == 'passed'
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
@@ -110,25 +140,34 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number }}
-          OK: ${{ steps.build.outputs.ok }}
+          OUTCOME: ${{ steps.build.outputs.outcome }}
           PR_URL: ${{ steps.pr.outputs.url }}
           BRANCH: ${{ steps.pr.outputs.branch }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          open_pr=$(gh pr list -R "$GITHUB_REPOSITORY" --head "submission/issue-$NUMBER" --state open --json url -q '.[0].url' || true)
           {
-            if [ "$OK" = true ] && [ -n "$PR_URL" ]; then
-              echo "Thanks! Your setup passed the checks and is now $PR_URL. A maintainer will review it; edit this issue to change anything and the pull request follows."
-            elif [ "$OK" = true ] && [ -n "$BRANCH" ]; then
-              echo "Thanks! Your setup passed the checks and is on the \`$BRANCH\` branch; a maintainer will open its pull request and review it. Edit this issue to change anything."
-            else
-              echo "Your setup didn't pass the checks yet. **Edit this issue** to fix what's listed below and they run again."
-            fi
+            case "$OUTCOME" in
+              passed)
+                if [ -n "$PR_URL" ]; then
+                  echo "Thanks! Your setup passed the checks and is now $PR_URL. A maintainer will review it; edit this issue to change anything and the pull request follows."
+                elif [ -n "$BRANCH" ]; then
+                  echo "Thanks! Your setup passed the checks and is on the \`$BRANCH\` branch; a maintainer will open its pull request and review it. Edit this issue to change anything."
+                else
+                  echo "Your setup passed the checks, but something went wrong on our side making its pull request. A maintainer will look at it ($RUN_URL); you don't need to change anything."
+                fi ;;
+              failed)
+                echo "Your setup didn't pass the checks yet. **Edit this issue** to fix what's listed below and they run again."
+                [ -n "$open_pr" ] && echo "Until then, $open_pr holds the version that last passed." ;;
+              *)
+                echo "Something went wrong on our side while checking your setup, not with your submission. A maintainer will look at it ($RUN_URL); you don't need to change anything." ;;
+            esac
             echo
-            [ -f "$RUNNER_TEMP/report.md" ] && cat "$RUNNER_TEMP/report.md" || echo "Something went wrong before the checks ran: $RUN_URL"
+            [ "$OUTCOME" != error ] && [ -f "$RUNNER_TEMP/report.md" ] && cat "$RUNNER_TEMP/report.md"
+            true
           } > "$RUNNER_TEMP/comment.md"
-          gh issue comment "$NUMBER" -R "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
-          if [ "$OK" = true ]; then
-            gh issue edit "$NUMBER" -R "$GITHUB_REPOSITORY" --remove-label needs-changes || true
-          else
-            gh issue edit "$NUMBER" -R "$GITHUB_REPOSITORY" --add-label needs-changes || true
-          fi
+          gh issue comment "$NUMBER" -R "$GITHUB_REPOSITORY" --edit-last --create-if-none --body-file "$RUNNER_TEMP/comment.md"
+          case "$OUTCOME" in
+            passed) gh issue edit "$NUMBER" -R "$GITHUB_REPOSITORY" --remove-label needs-changes || true ;;
+            failed) gh issue edit "$NUMBER" -R "$GITHUB_REPOSITORY" --add-label needs-changes || true ;;
+          esac

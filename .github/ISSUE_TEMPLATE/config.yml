@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: A problem with axiom itself
-    url: https://github.com/axiom-dotfiles/axiom/issues/new/choose
+    url: https://github.com/axiom-shell/axiom/issues/new/choose
     about: Applying setups, the gallery, or anything else in the shell is axiom's, reported there.
   - name: Questions and help
-    url: https://github.com/axiom-dotfiles/axiom/discussions/categories/q-a
+    url: https://github.com/axiom-shell/axiom/discussions/categories/q-a
     about: How do I build a setup like this one? Ask in axiom's Discussions.
   - name: Show your setup without submitting it
-    url: https://github.com/axiom-dotfiles/axiom/discussions/categories/show-and-tell
+    url: https://github.com/axiom-shell/axiom/discussions/categories/show-and-tell
     about: Just showing off, or not ready to share the config yet.

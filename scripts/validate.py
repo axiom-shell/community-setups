@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""Check community setups against axiom's schema.
+"""Check community setups, each config loaded by axiom's own binary.
 
-    scripts/validate.py [--axiom DIR] [--fix] [ID ...]
+    scripts/validate.py [--axiom DIR] [--bin FILE] [--fix] [ID ...]
+    scripts/validate.py --upgrade ID ...   (scripts/check.sh --upgrade)
     scripts/validate.py --pr-author USER --changed ID,ID --base-rev REV   (CI)
 
-With no IDs, checks every setup, or with --changed only those (CI: a setup
-is checked when it's posted or changed, never again later, since axiom
-migrates an older setup's config when it's applied). --fix writes config.json's `_example`
-header from setup.json. Exits 1 when any setup has an error.
+scripts/check.sh fetches axiom and runs this; run on its own, it takes the
+checkout from --axiom, $AXIOM_DIR or .axiom/, and the binary from --bin,
+$AXIOM_BIN, the checkout's .edge/axiom or PATH (without one, configs
+aren't loaded). With no IDs, checks every setup, or with --changed only
+those (CI: a setup is checked when it's posted or changed, never again
+later, since axiom migrates an older setup's config when it's applied).
+--fix writes config.json's header from setup.json. --upgrade rewrites
+config.json as this axiom exports it (`axiom config share`), for a
+maintainer to bring a setup up to a new schema.
+
+Exits 1 when a setup has an error, 3 when axiom itself failed.
 """
 
 import argparse
@@ -17,7 +25,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-from setups import ROOT, SETUPS, Axiom, Report, check_setup
+from setups import ROOT, SETUPS, Axiom, AxiomFailed, Report, check_setup, inert, with_header, write_json
+
+
+def escape(text):
+    """For a workflow command (::error …::message): a submission's config
+    keys reach these, and a newline would start a command of their own"""
+    return str(text).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def escape_property(text):
+    return escape(text).replace(":", "%3A").replace(",", "%2C")
 
 
 def maintainers():
@@ -60,16 +78,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("ids", nargs="*")
     parser.add_argument("--axiom", help="axiom checkout (default: $AXIOM_DIR, then .axiom/)")
-    parser.add_argument("--fix", action="store_true", help="write config.json's _example from setup.json")
+    parser.add_argument("--bin", help="axiom binary (default: $AXIOM_BIN, then the checkout's .edge/axiom, then PATH)")
+    parser.add_argument("--fix", action="store_true", help="write config.json's header (meta, or format 1's _example) from setup.json")
     parser.add_argument("--pr-author", help="the PR's author: changed setups must be theirs")
     parser.add_argument("--changed", help="comma-separated ids the change touches: without IDs, only those are checked")
     parser.add_argument("--base-rev", help="the PR's base revision: a changed setup must have been the PR author's there too")
     parser.add_argument("--root", help="folder holding the setups (default: setups/)")
-    parser.add_argument("--dump-input", metavar="FILE", help="write ci/tst_Setups.qml's input and stop (scripts/check.sh)")
-    parser.add_argument("--migrated", metavar="FILE", help="ci/tst_Setups.qml's output: check the configs as axiom loads them")
+    parser.add_argument("--upgrade", action="store_true", help="with IDs: rewrite each config.json as this axiom exports it, then check it")
     args = parser.parse_args()
 
-    axiom = Axiom.locate(args.axiom)
+    try:
+        axiom = Axiom.locate(args.axiom, args.bin)
+    except AxiomFailed as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(3)
     base = Path(args.root) if args.root else SETUPS
     changed = sorted({c for c in (args.changed or "").split(",") if c})
     if args.ids:
@@ -83,21 +105,31 @@ def main():
         if missing:
             sys.exit(f"No such setup: {', '.join(missing)}")
 
-    if args.dump_input:
-        setups = {}
+    if args.upgrade:
+        if not args.ids:
+            sys.exit("--upgrade needs the setups' IDs (scripts/check.sh --upgrade ID…)")
+        if not axiom.can_share:
+            sys.exit("--upgrade needs an axiom with `axiom config share` (docs/dev/issues.md: \"The community setups' CI can't run axiom's pick\")")
         for f in folders:
             try:
-                config = json.loads((f / "config.json").read_text())
-            except (OSError, ValueError):
-                continue  # reported by the real run
-            if isinstance(config, dict):
-                setups[f.name] = config
-        Path(args.dump_input).write_text(json.dumps({"schema": axiom.schema, "setups": setups}))
-        return
+                loaded = axiom.load(f / "config.json")
+            except AxiomFailed as e:
+                sys.exit(f"{f.name}: {e}")
+            if not loaded["valid"]:
+                sys.exit(f"{f.name}: axiom can't load it: " + "; ".join(f"{i['path']}: {i['message']}" for i in loaded["issues"]))
+            manifest = json.loads((f / "setup.json").read_text())
+            write_json(f / "config.json", with_header(loaded["config"], manifest.get("title", ""), manifest.get("description", "")))
+            print(f"{f.name}: config.json is now as {axiom.version} exports it")
 
     loaded = {}
-    if args.migrated:
-        loaded = json.loads(Path(args.migrated).read_text())
+    if axiom.binary:
+        for f in folders:
+            if (f / "config.json").is_file() and not (f / "config.json").is_symlink():
+                try:
+                    loaded[f.name] = axiom.load(f / "config.json")
+                except AxiomFailed as e:
+                    print(f"error: {f.name}: {e}", file=sys.stderr)
+                    sys.exit(3)
     reports = [check_setup(f, axiom, fix=args.fix, loaded=loaded.get(f.name)) for f in folders]
 
     if args.pr_author and changed and args.pr_author.lower() not in maintainers():
@@ -128,20 +160,21 @@ def main():
         for kind, items in (("error", r.errors), ("warning", r.warnings)):
             for file, message in items:
                 print(f"  {kind}: {file}: {message}")
-                summary.append(f"- **{kind}** `{file}`: {message}")
+                summary.append(f"- **{kind}** `{file}`: {inert(message)}")
                 if github:
-                    print(f"::{kind} file={rel}/{file}::{message}")
-    if not args.migrated:
-        print("(not migrated first: run scripts/check.sh for the full check)")
+                    print(f"::{kind} file={escape_property(f'{rel}/{file}')}::{escape(message)}")
+    if not axiom.binary:
+        print("(no axiom binary, so the configs were neither loaded nor scope-checked: run scripts/check.sh for the full check)")
     if not reports:
         print("No setups to check.")
         summary.append("No setups to check.")
 
+    against = f"{axiom.version}, config version {axiom.config_version}" if axiom.binary else "no axiom binary"
     out = os.environ.get("GITHUB_STEP_SUMMARY")
     if out:
         with open(out, "a") as f:
-            f.write(f"## Setups checked against axiom (config version {axiom.version})\n\n" + "\n".join(summary) + "\n")
-    print(f"\n{len(reports) - failed}/{len(reports)} setups ok, against axiom config version {axiom.version}")
+            f.write(f"## Setups checked against {against}\n\n" + "\n".join(summary) + "\n")
+    print(f"\n{len(reports) - failed}/{len(reports)} setups ok, against {against}")
     sys.exit(1 if failed else 0)
 
 

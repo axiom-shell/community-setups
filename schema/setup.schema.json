@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/axiom-dotfiles/community-setups/main/schema/setup.schema.json",
+  "$id": "https://raw.githubusercontent.com/axiom-shell/community-setups/main/schema/setup.schema.json",
   "title": "axiom community setup",
   "description": "setups/<id>/setup.json: what the gallery shows about a setup. Its config is config.json beside it.",
   "type": "object",

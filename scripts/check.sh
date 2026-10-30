@@ -1,16 +1,26 @@
 #!/usr/bin/env bash
-# Check setups the way CI does: load each through axiom's own migration
-# (qmltestrunner on a checkout's pure QML), then scripts/validate.py.
+# Check setups the way CI does: each config loaded by axiom's own binary
+# (migrated, validated, and with `axiom config share` picked as Export
+# would), then everything else, by scripts/validate.py.
 #
 #   scripts/check.sh [--axiom DIR] [validate.py args…] [ID…]
+#   scripts/check.sh [--axiom DIR] --upgrade ID…
 #
-# The axiom checkout is --axiom, else $AXIOM_DIR, else .axiom/ (CI clones
-# axiom's main there). Without Qt 6's qmltestrunner the load step is
-# skipped with a warning (CI always has it).
+# --upgrade rewrites each setup's config.json as that axiom exports it
+# (migrated, look only, defaults left out), then checks it: how a maintainer
+# brings setups up to a new config schema.
+#
+# Without --axiom or $AXIOM_DIR, axiom's edge build and the commit it was
+# built from are fetched into .axiom/ (scripts/axiom.sh). With a checkout of
+# your own, the binary is $AXIOM_BIN, else `axiom` on PATH: build it from
+# that checkout so the two agree.
+#
+# Exits 0 when every setup passes, 1 when one doesn't, 3 when axiom couldn't
+# be fetched or run.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-axiom="${AXIOM_DIR:-$root/.axiom}"
+axiom="${AXIOM_DIR:-}"
 args=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -19,27 +29,10 @@ while [ $# -gt 0 ]; do
     *) args+=("$1"); shift ;;
   esac
 done
-axiom="$(cd "$axiom" && pwd)"
 
-qt_bin="${QT_BIN:-}"
-if [ -z "$qt_bin" ] && command -v qmake6 >/dev/null 2>&1; then
-  qt_bin="$(qmake6 -query QT_INSTALL_BINS 2>/dev/null)"
+if [ -z "$axiom" ]; then
+  axiom="$root/.axiom"
+  "$root/scripts/axiom.sh" "$axiom" || exit 3
 fi
-qt_bin="${qt_bin:-/usr/lib/qt6/bin}"
 
-work="$root/ci/.work"
-rm -rf "$work"
-mkdir -p "$work"
-migrated=()
-if [ -x "$qt_bin/qmltestrunner" ]; then
-  tree="$(mktemp -d)"
-  trap 'rm -rf "$tree"' EXIT
-  python3 "$axiom/scripts/qml_modules.py" --pure "$tree" >/dev/null
-  python3 "$root/scripts/validate.py" --axiom "$axiom" --dump-input "$work/input.json" "${args[@]}"
-  QML_XHR_ALLOW_FILE_READ=1 QML_XHR_ALLOW_FILE_WRITE=1 QT_QPA_PLATFORM=offscreen \
-    "$qt_bin/qmltestrunner" -import "$tree" -input "$root/ci/tst_Setups.qml" -silent
-  migrated=(--migrated "$work/migrated.json")
-else
-  echo "warning: no Qt 6 qmltestrunner in $qt_bin: setups aren't migrated first (set QT_BIN)" >&2
-fi
-python3 "$root/scripts/validate.py" --axiom "$axiom" "${migrated[@]}" "${args[@]}"
+exec python3 "$root/scripts/validate.py" --axiom "$axiom" "${args[@]}"

@@ -11,9 +11,11 @@ Use axiom's editors and Settings page. Before exporting:
 
 ## 2. Export it
 
-Go to **Settings → Maintenance → Share → Export**, with **keybinds, apps and commands off**. That writes `~/axiom-<name>-<date>-<time>.json`, holding only the look and layout that differs from axiom's defaults. Rename it to `config.json`.
+Go to **Settings → Maintenance → Community setups → Export and submit…**, or **Share → Export** with **Include preferences, keybinds and apps** and **Include commands** both **off**. That writes `~/axiom-<name>-<date>-<time>.json`, holding only the look and layout that differs from axiom's defaults. Submitting through the issue form, drag that file in as it is; in a pull request, it's your setup's `config.json`.
 
-Don't edit it by hand, and don't copy your whole `~/.config/axiom/config.json`. The export already leaves out your monitors, wallpapers, accounts and paths.
+Don't edit it by hand, and don't copy your whole `~/.config/axiom/config.json`. The export already leaves out your monitors, wallpapers, accounts and paths: a second bar or dock lands on the importer's monitors in order.
+
+Export from an up-to-date axiom: CI checks your setup with axiom's current `main` (an older export is converted, as axiom converts it when someone applies it), and a setting that has since become personal (or a command) fails the check.
 
 ## 3. Screenshot it
 
@@ -22,15 +24,13 @@ One screenshot of the whole screen, unedited, showing what makes the setup yours
 - Nothing private: notifications, names, email addresses, chat contents.
 - `grim screenshot.png` works on every compositor axiom supports.
 
-Up to three more go in `extra/` (at most 2 MB each).
-
 ## 4. Optional: your own palette
 
-If `Appearance.theme` in your export isn't one of [axiom's themes](https://github.com/axiom-dotfiles/axiom/tree/main/config/themes), bundle it:
+If your theme (`Appearance.theme.name` in the export) isn't one of [axiom's themes](https://github.com/axiom-shell/axiom/tree/main/config/themes), bundle it:
 - A theme generated from your wallpaper is in `~/.local/state/axiom/themes/<name>.json`.
-- A new one starts as a copy of axiom's [`config/themes/template/theme.json`](https://github.com/axiom-dotfiles/axiom/blob/main/config/themes/template/theme.json).
+- A new one starts as a copy of axiom's [`config/themes/template/theme.json`](https://github.com/axiom-shell/axiom/blob/main/config/themes/template/theme.json).
 
-Save it as `theme.json`, fill in its `name` and `author`, and set `Appearance.theme` in `config.json` to `community/<id>`. Submitting through an issue does that renaming for you.
+Save it as `theme.json`, fill in its `name` and `author`, and set `Appearance.theme.name` in `config.json` to `community/<id>`. Submitting through an issue does that renaming for you.
 
 ## 5. Optional: a wallpaper
 
@@ -40,7 +40,7 @@ One wallpaper (`wallpaper.png`, `.jpg` or `.webp`, at most 10 MB) that you made,
 
 ### Through an issue (no git)
 
-Open [Submit a setup](https://github.com/axiom-dotfiles/community-setups/issues/new?template=01-submit-setup.yml), fill in the fields, paste `config.json` and drag your screenshot in. A workflow checks it, opens a pull request for you and comments with the result. Edit the issue to fix anything, and the pull request follows.
+Open [Submit a setup](https://github.com/axiom-shell/community-setups/issues/new?template=01-submit-setup.yml) (**Export and submit…** opens it for you), fill in the fields, and drag in the exported file and your screenshot. Use the form: an issue opened without it isn't checked, and no pull request is made from it. A workflow checks it, opens a pull request for you and comments with the result. Edit the issue to fix anything, and the pull request follows.
 
 ### As a pull request
 
@@ -53,7 +53,6 @@ setups/<id>/            lowercase letters, digits and dashes, at most 40
   screenshot.png        (or .jpg / .webp)
   theme.json            optional
   wallpaper.jpg         optional
-  extra/                optional, up to 3 more screenshots
 ```
 
 `setup.json` (its schema is [`schema/setup.schema.json`](schema/setup.schema.json); editors that read `$schema` autocomplete it):
@@ -74,11 +73,11 @@ setups/<id>/            lowercase letters, digits and dashes, at most 40
 
 Leave `wallpaper` out without one. `tags` come from a fixed list (see the schema); ask in an issue for a new one.
 
-Then check it locally (Python with Pillow and jsonschema; Qt 6 for the full check) against a clone of axiom:
+Then check it locally (Python with Pillow and jsonschema, plus curl and git): `check.sh` fetches the same axiom CI uses (its `edge` build and that commit's checkout) into `.axiom/` the first time.
 
 ```sh
-AXIOM_DIR=~/.config/quickshell/axiom scripts/validate.py --fix <id>   # writes config.json's header
-AXIOM_DIR=~/.config/quickshell/axiom scripts/check.sh <id>
+scripts/check.sh --fix <id>   # writes config.json's `meta` (its title and description) from setup.json
+scripts/check.sh <id>
 ```
 
 ## Updating or removing your setup
