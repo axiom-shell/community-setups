@@ -32,9 +32,9 @@ def body(**over):
         "Tags": "dark, glass",
         "Tested on": "Hyprland, niri",
         "Fonts": "Inter",
-        "config.json": '```json\n{"format": 2, "version": 84, "meta": {"title": "x", "description": ""}, "Appearance": {"theme": {"name": "dracula"}, "font": {"family": "Inter"}}}\n```',
+        "Exported config": '```json\n{"format": 2, "version": 84, "meta": {"title": "x", "description": ""}, "Appearance": {"theme": {"name": "dracula"}, "font": {"family": "Inter"}}}\n```',
         "Screenshot": "![shot](https://github.com/user-attachments/assets/1111-2222)",
-        "theme.json": "_No response_",
+        "Theme": "_No response_",
         "Wallpaper": "_No response_",
         "Wallpaper license": "_No response_",
         "Wallpaper source": "_No response_",
@@ -63,7 +63,13 @@ def main():
     tmp = Path(tempfile.mkdtemp())
     its.SETUPS = tmp
     image = png()
-    its.download = lambda url, what: image if its.allowed(url) else (_ for _ in ()).throw(its.Refused(f"{what}: links elsewhere aren't fetched"))
+    exported = json.dumps({"format": 2, "version": 84, "meta": {"title": "x", "description": ""}, "Appearance": {"theme": {"name": "nord"}, "font": {"family": "Iosevka"}}}).encode()
+
+    def download(url, what):
+        if not its.allowed(url):
+            raise its.Refused(f"{what}: links elsewhere aren't fetched")
+        return exported if url.endswith(".json") else image
+    its.download = download
     try:
         results = [
             run("pasted config", body(), check=lambda f: (
@@ -71,24 +77,36 @@ def main():
                 and list(json.loads((f / "config.json").read_text()))[:3] == ["format", "version", "meta"]
                 and json.loads((f / "config.json").read_text())["meta"] == {"title": "Glass Harbor", "description": "Translucent bars over a harbour at night"}
                 and (f / "screenshot.png").is_file() and f.name == "glass-harbor")),
-            run("bundled theme renames it", body(**{"Setup id": "harbor", "theme.json": '{"name": "Harbor", "colors": {}}'}), check=lambda f: (
+            run("bundled theme renames it", body(**{"Setup id": "harbor", "Theme": '{"name": "Harbor", "colors": {}}'}), check=lambda f: (
                 json.loads((f / "config.json").read_text())["Appearance"]["theme"] == {"name": "community/harbor"})),
-            run("format 1 keeps its header and theme string", body(**{"Setup id": "old", "theme.json": '{"name": "Old", "colors": {}}', "config.json": '{"_example": {"title": "x"}, "version": 74, "Appearance": {"theme": "nord"}}'}), check=lambda f: (
+            run("format 1 keeps its header and theme string", body(**{"Setup id": "old", "Theme": '{"name": "Old", "colors": {}}', "Exported config": '{"_example": {"title": "x"}, "version": 74, "Appearance": {"theme": "nord"}}'}), check=lambda f: (
                 json.loads((f / "config.json").read_text()) == {"version": 74, "_example": {"title": "Glass Harbor", "description": "Translucent bars over a harbour at night"}, "Appearance": {"theme": "community/old"}})),
-            run("a bad Appearance is refused, not a traceback", body(**{"Setup id": "bad-shape", "theme.json": '{"name": "X"}', "config.json": '{"format": 2, "version": 84, "Appearance": []}'}), expect_error="`Appearance` must be an object"),
+            run("a bad Appearance is refused, not a traceback", body(**{"Setup id": "bad-shape", "Theme": '{"name": "X"}', "Exported config": '{"format": 2, "version": 84, "Appearance": []}'}), expect_error="`Appearance` must be an object"),
             run("headings in about", body(**{"About it": "Intro\n\n### Tips\n\nUse the overlay"}), check=lambda f: (
                 json.loads((f / "setup.json").read_text())["about"] == "Intro\n\n### Tips\n\nUse the overlay"
                 and json.loads((f / "setup.json").read_text())["tags"] == ["dark", "glass"])),
-            run("empty theme field", body(**{"theme.json": "```json\n\n```"}), check=lambda f: (
+            run("empty theme field", body(**{"Theme": "```json\n\n```"}), check=lambda f: (
                 not (f / "theme.json").exists()
                 and json.loads((f / "config.json").read_text())["Appearance"]["theme"] == {"name": "dracula"})),
-            run("empty config field", body(**{"config.json": "```json\n\n```"}), expect_error="config.json is missing"),
+            run("empty config field", body(**{"Exported config": "```json\n\n```"}), expect_error="Exported config is missing"),
             run("checklist isn't a field", body(), check=lambda f: "Checklist" not in (f / "setup.json").read_text()),
-            run("attached config", body(**{"config.json": "[config.json](https://github.com/user-attachments/files/123/config.json)"}), expect_error="isn't valid JSON"),
+            # A file dragged into a textarea, as GitHub writes it in the body
+            run("attached config", body(**{"Setup id": "attached", "Exported config": "[axiom-harbor-2026-10-30-101500.json](https://github.com/user-attachments/files/33891945/axiom-harbor-2026-10-30-101500.json)"}), check=lambda f: (
+                json.loads((f / "config.json").read_text())["Appearance"]["theme"] == {"name": "nord"}
+                and json.loads((f / "setup.json").read_text())["fonts"] == ["Iosevka", "Inter"])),
+            run("attached theme", body(**{"Setup id": "attached-theme", "Theme": "[wallpaper-dark.json](https://github.com/user-attachments/files/1/wallpaper-dark.json)"}), check=lambda f: (
+                (f / "theme.json").is_file()
+                and json.loads((f / "config.json").read_text())["Appearance"]["theme"] == {"name": "community/attached-theme"})),
+            run("submitted while still uploading", body(**{"Exported config": "[Uploading axiom-harbor.json…]()"}), expect_error="paste the file's contents, or attach the file"),
+            run("an attached image isn't a config", body(**{"Exported config": '<img width="1920" alt="x" src="https://github.com/user-attachments/assets/1111" />'}), expect_error="isn't valid JSON"),
+            run("fonts optional, the export's added", body(**{"Setup id": "fonts", "Fonts": "_No response_"}), check=lambda f: (
+                json.loads((f / "setup.json").read_text())["fonts"] == ["Inter"])),
+            run("an export's font already listed isn't repeated", body(**{"Setup id": "fonts-listed", "Fonts": "Inter, Iosevka"}), check=lambda f: (
+                json.loads((f / "setup.json").read_text())["fonts"] == ["Inter", "Iosevka"])),
             run("no screenshot", body(Screenshot="_No response_"), expect_error="Screenshot is missing"),
             run("foreign link", body(Screenshot="![x](https://evil.example/x.png)"), expect_error="links elsewhere"),
             run("bad id", body(**{"Setup id": "Not OK"}), expect_error="setup id"),
-            run("bad json", body(**{"config.json": "{nope"}), expect_error="isn't valid JSON"),
+            run("bad json", body(**{"Exported config": "{nope"}), expect_error="isn't valid JSON"),
         ]
         its.SCREENSHOT_MAX = len(image) - 1
         results.append(run("an oversized screenshot becomes lossless WebP", body(**{"Setup id": "large"}), check=lambda f: (

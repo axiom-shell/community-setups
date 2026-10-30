@@ -13,7 +13,7 @@ Use axiom's editors and Settings page. Before exporting:
 
 Go to **Settings → Maintenance → Community setups → Export and submit…**, or **Share → Export** with **Include preferences, keybinds and apps** and **Include commands** both **off**. That writes `~/axiom-<name>-<date>-<time>.json`, holding only the look and layout that differs from axiom's defaults. Submitting through the issue form, drag that file in as it is; in a pull request, it's your setup's `config.json`.
 
-Don't edit it by hand, and don't copy your whole `~/.config/axiom/config.json`. The export already leaves out your monitors, wallpapers, accounts and paths: a second bar or dock lands on the importer's monitors in order.
+Don't edit it by hand, and don't copy your whole `~/.config/axiom/config.json`. The export already leaves out your monitors' names (a bar or dock keeps only its place: `#2`, `@primary`, `*`), wallpapers, accounts and paths.
 
 Export from an up-to-date axiom: CI checks your setup with axiom's current `main` (an older export is converted, as axiom converts it when someone applies it), and a setting that has since become personal (or a command) fails the check.
 

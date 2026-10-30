@@ -31,9 +31,9 @@ FIELDS = {
     "tags": "Tags",
     "tested": "Tested on",
     "fonts": "Fonts",
-    "config": "config.json",
+    "config": "Exported config",
     "screenshot": "Screenshot",
-    "theme": "theme.json",
+    "theme": "Theme",
     "wallpaper": "Wallpaper",
     "license": "Wallpaper license",
     "source": "Wallpaper source",
@@ -232,8 +232,8 @@ def build(body, author):
     if field(found, "about"):
         manifest["about"] = field(found, "about")
 
-    config = json_field(field(found, "config"), "config.json", True)
-    theme = json_field(field(found, "theme"), "theme.json", False)
+    config = json_field(field(found, "config"), "Exported config", True)
+    theme = json_field(field(found, "theme"), "Theme", False)
     shot = image_field(field(found, "screenshot"), "Screenshot", True, SCREENSHOT_MAX)
     wall = image_field(field(found, "wallpaper"), "Wallpaper", False, WALLPAPER_MAX)
     if wall:
@@ -245,6 +245,12 @@ def build(body, author):
             raise Refused("config.json: `Appearance` must be an object: export it again")
         set_theme_name(config, f"community/{setup_id}")
         theme.setdefault("author", author)
+    # The export's own font is listed for the submitter
+    appearance = config.get("Appearance")
+    font = appearance.get("font") if isinstance(appearance, dict) else None
+    family = font.get("family") if isinstance(font, dict) else None
+    if isinstance(family, str) and family.strip() and family not in manifest["fonts"]:
+        manifest["fonts"].insert(0, family)
     config = with_header(config, manifest["title"], manifest["description"])
 
     folder = SETUPS / setup_id

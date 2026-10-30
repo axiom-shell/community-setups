@@ -3,7 +3,9 @@
 breaks one of GitHub's form rules, is dropped from the New issue page
 without a word (as 01-submit-setup.yml was from #5 to #8), so each one is
 parsed here, and the submission form's labels are checked against what
-scripts/issue_to_setup.py reads."""
+scripts/issue_to_setup.py reads. A field a file is dragged into must be a
+textarea without `render`: GitHub turns `render` into a code block that
+takes no attachments (the config and theme fields were, until #9)."""
 
 import re
 import sys
@@ -16,7 +18,9 @@ TEMPLATES = ROOT / ".github" / "ISSUE_TEMPLATE"
 sys.path.insert(0, str(ROOT / "scripts"))
 import issue_to_setup as its  # noqa: E402
 
-TYPES = {"markdown", "input", "textarea", "dropdown", "checkboxes"}
+TYPES = {"markdown", "input", "textarea", "dropdown", "checkboxes", "upload"}
+# Fields of the submission form a file is dropped into (issue_to_setup.FIELDS keys)
+FILE_FIELDS = ("config", "screenshot", "theme", "wallpaper")
 ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
@@ -49,6 +53,9 @@ def form_problems(form):
         if not label or label in labels:
             problems.append(f"{where}: label {label!r} is missing or repeated")
         labels.add(label)
+        for key, value in (item.get("validations") or {}).items():
+            if key == "required" and not isinstance(value, bool) or key == "min_length" and (type(value) is not int or value < 0):
+                problems.append(f"{where}.validations.{key}: {value!r}")
         if kind == "dropdown":
             options = attrs.get("options") or []
             if not options or len(set(map(str, options))) != len(options):
@@ -79,6 +86,13 @@ def main():
     results.append(("01-submit-setup.yml matches issue_to_setup.FIELDS", [] if labels == expected else [f"form {labels} != script {expected}"]))
     if "title" in {item.get("id") for item in submit["body"]}:
         results[-1][1].append("a field with id `title` takes the issue title's ?title= prefill")
+    by_label = {item["attributes"]["label"]: item for item in submit["body"] if item["type"] != "markdown"}
+    problems = []
+    for key in FILE_FIELDS:
+        item = by_label.get(its.FIELDS[key], {})
+        if item.get("type") != "textarea" or "render" in item.get("attributes", {}):
+            problems.append(f"{its.FIELDS[key]!r} must be a textarea without `render` to take a dragged-in file")
+    results.append(("01-submit-setup.yml's file fields take attachments", problems))
     report(results)
 
 
