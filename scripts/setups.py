@@ -72,10 +72,15 @@ class Axiom:
 
     def __init__(self, path, binary=None):
         self.path = Path(path).resolve()
-        themes = self.path / "config" / "themes"
+        # qml/config/themes since axiom's final layout (axiom 8e7723054e9d); config/themes before it
+        candidates = [self.path / "qml" / "config" / "themes", self.path / "config" / "themes"]
+        themes = next((t for t in candidates if (t / "template" / "theme.json").is_file()), None)
+        if themes is None:
+            raise AxiomFailed(
+                f"no themes/template/theme.json under {self.path} (looked in qml/config/themes, config/themes): "
+                "point --axiom (or AXIOM_DIR) at a checkout of axiom"
+            )
         template = themes / "template" / "theme.json"
-        if not template.is_file():
-            raise SystemExit(f"{template} not found: point --axiom (or AXIOM_DIR) at a checkout of axiom")
         self.themes = sorted(p.stem for p in themes.glob("*.json") if not p.name.endswith(".schema.json"))
         self.theme_template = json.loads(template.read_text())
         self.binary = binary
@@ -100,7 +105,7 @@ class Axiom:
                     if found and Path(found).is_file() and os.access(found, os.X_OK):
                         return Axiom(path, str(found))
                 return Axiom(path)
-        raise SystemExit(
+        raise AxiomFailed(
             "No axiom checkout: run scripts/check.sh (it fetches one), pass --axiom DIR, or set AXIOM_DIR"
         )
 

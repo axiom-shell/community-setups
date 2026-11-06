@@ -130,7 +130,7 @@ SCOPE_CASES = {
     "good-default-personal": (with_config(lambda c: c.__setitem__("Apps", {"pinned": []})), None),
     "personal-apps": (with_config(lambda c: c.__setitem__("Apps", {"pinned": ["firefox"]})), "personal"),
     "personal-osd-app-bar": (with_config(lambda c: c.__setitem__("OSD", {"items": [{"id": "o", "bars": [{"type": "master"}, {"type": "app", "icon": "web"}]}]})), "personal"),
-    "commands-terminal": (with_config(lambda c: c.__setitem__("Apps", {"terminal": "foot"})), "runs a command"),
+    "commands-terminal": (with_config(lambda c: c.__setitem__("Apps", {"commands": {"terminal": "foot"}})), "runs a command"),
     "machine-monitor": (bars("DP-1"), "belongs to the PC"),
     "takeover": (with_config(lambda c: c.__setitem__("Compositor", {"mode": "managed"})), "takes something over"),
 }
