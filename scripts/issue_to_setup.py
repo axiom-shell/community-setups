@@ -237,7 +237,15 @@ def build(body, author):
     shot = image_field(field(found, "screenshot"), "Screenshot", True, SCREENSHOT_MAX)
     wall = image_field(field(found, "wallpaper"), "Wallpaper", False, WALLPAPER_MAX)
     if wall:
-        manifest["wallpaper"] = {"license": field(found, "license"), "source": field(found, "source")}
+        license, source = field(found, "license"), field(found, "source")
+        missing = [name for name, value in (("Wallpaper license", license), ("Wallpaper source", source)) if not value]
+        if missing:
+            raise Refused(
+                f"You attached a wallpaper, so fill in {' and '.join(f'**{m}**' for m in missing)}: "
+                "an SPDX license id (CC0-1.0, CC-BY-4.0, …) and the https link you got it from, "
+                "or `own` for both if you made it. If you can't find its license, remove the wallpaper instead."
+            )
+        manifest["wallpaper"] = {"license": license, "source": source}
 
     # A bundled theme is named after the setup, whatever the export said
     if theme is not None:

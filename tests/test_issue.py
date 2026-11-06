@@ -107,6 +107,9 @@ def main():
             run("foreign link", body(Screenshot="![x](https://evil.example/x.png)"), expect_error="links elsewhere"),
             run("bad id", body(**{"Setup id": "Not OK"}), expect_error="setup id"),
             run("bad json", body(**{"Exported config": "{nope"}), expect_error="isn't valid JSON"),
+            run("wallpaper without a license", body(**{"Wallpaper": "![w](https://github.com/user-attachments/assets/3333)", "Wallpaper source": "https://example.com/w"}), expect_error="fill in **Wallpaper license**"),
+            run("wallpaper with license and source", body(**{"Setup id": "walled", "Wallpaper": "![w](https://github.com/user-attachments/assets/3333)", "Wallpaper license": "own", "Wallpaper source": "own"}), check=lambda f: (
+                json.loads((f / "setup.json").read_text())["wallpaper"] == {"license": "own", "source": "own"})),
         ]
         its.SCREENSHOT_MAX = len(image) - 1
         results.append(run("an oversized screenshot becomes lossless WebP", body(**{"Setup id": "large"}), check=lambda f: (
