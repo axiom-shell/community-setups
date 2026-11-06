@@ -1,0 +1,93 @@
+{
+  "format": 1,
+  "generated": "2026-11-06T03:03:37+00:00",
+  "setups": [
+    {
+      "id": "sane-gruvbox-theme",
+      "title": "Sane Gruvbox Theme",
+      "author": "Jupiter-Tank",
+      "description": "Simple layout with no complex menus or animations.",
+      "about": "",
+      "tags": [
+        "dark",
+        "retro",
+        "keyboard-driven",
+        "rounded"
+      ],
+      "tested": [
+        "hyprland"
+      ],
+      "fonts": [],
+      "theme": "gruvbox-material-dark",
+      "configVersion": 98,
+      "wallpaper": {
+        "license": "MIT",
+        "source": "https://github.com/AngelJumbo/gruvbox-wallpapers/tree/main/wallpapers/minimalistic"
+      },
+      "updated": "2026-11-06T12:03:14+09:00",
+      "page": "https://github.com/axiom-shell/community-setups/tree/main/setups/sane-gruvbox-theme",
+      "files": {
+        "config": {
+          "path": "setups/sane-gruvbox-theme/config.json",
+          "sha256": "fcac005627ebb867999ab78764fea8b9982ebf514487da9988481807e12c48e1",
+          "size": 10455
+        },
+        "screenshot": {
+          "path": "setups/sane-gruvbox-theme/screenshot.png",
+          "sha256": "21010fbfb6f03c92c3a8a046a1b2fb7efce88d1de27f3713772010370c1de197",
+          "size": 997679
+        },
+        "thumb": {
+          "path": "setups/sane-gruvbox-theme/thumb.webp",
+          "sha256": "18799e1115a6ec140fe48d765e38b796400572effe22ea624e40a71da704a6ce",
+          "size": 21790
+        },
+        "wallpaper": {
+          "path": "setups/sane-gruvbox-theme/wallpaper.png",
+          "sha256": "551667be7e34e449c0bf5cdae1ea05febcaf1a7f5b3250b8bf1f7aeb6a8d48ee",
+          "size": 3361208
+        }
+      }
+    },
+    {
+      "id": "new-test",
+      "title": "New test",
+      "author": "travishepworth",
+      "description": "test of new pipeline for community setups",
+      "about": "",
+      "tags": [
+        "dark"
+      ],
+      "tested": [
+        "sway",
+        "niri",
+        "hyprland"
+      ],
+      "fonts": [
+        "Inter"
+      ],
+      "theme": "rose-pine",
+      "configVersion": 84,
+      "wallpaper": null,
+      "updated": "2026-10-30T20:20:21+09:00",
+      "page": "https://github.com/axiom-shell/community-setups/tree/main/setups/new-test",
+      "files": {
+        "config": {
+          "path": "setups/new-test/config.json",
+          "sha256": "72d509ae18a5a4cfa9967ae57fb3158797d01b54b92d0342a4896bd838ff942c",
+          "size": 36985
+        },
+        "screenshot": {
+          "path": "setups/new-test/screenshot.png",
+          "sha256": "003f2d97780925b753c7ba4d33456d14fb22be4cb044d8fd54afa1028b4c8ecd",
+          "size": 1315189
+        },
+        "thumb": {
+          "path": "setups/new-test/thumb.webp",
+          "sha256": "554efc74617a9a832cd651356f65f3032155b1523620ab240289f2f6b3fd7b83",
+          "size": 20706
+        }
+      }
+    }
+  ]
+}
