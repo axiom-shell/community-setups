@@ -1,0 +1,525 @@
+{
+  "format": 2,
+  "version": 98,
+  "meta": {
+    "title": "Sane Gruvbox Theme",
+    "description": "Simple layout with no complex menus or animations."
+  },
+  "Lockscreen": {
+    "layout": {
+      "modules": [
+        {
+          "id": "greeting",
+          "type": "Greeting",
+          "place": {
+            "x": 3,
+            "y": 2,
+            "w": 9,
+            "h": 2
+          }
+        },
+        {
+          "id": "nowPlaying",
+          "type": "NowPlaying",
+          "place": {
+            "x": 4,
+            "y": 4,
+            "w": 7,
+            "h": 2
+          }
+        },
+        {
+          "id": "password",
+          "type": "Password",
+          "place": {
+            "x": 4,
+            "y": 6,
+            "w": 7,
+            "h": 1
+          }
+        }
+      ],
+      "grid": {
+        "columns": 15,
+        "rows": 8
+      }
+    }
+  },
+  "General": {},
+  "Launcher": {
+    "screen": {
+      "mode": "focused"
+    }
+  },
+  "PowerMenu": {
+    "backdrop": 35
+  },
+  "Notifications": {},
+  "Appearance": {
+    "theme": {
+      "name": "gruvbox-material-dark"
+    },
+    "wallpaper": {},
+    "shape": {
+      "radius": 25
+    }
+  },
+  "Interface": {},
+  "OSD": {
+    "items": [
+      {
+        "openOnHover": true,
+        "bars": {
+          "items": [
+            {
+              "icon": "music_note",
+              "showOsd": false,
+              "type": "other"
+            },
+            {
+              "showOsd": false,
+              "type": "master"
+            }
+          ]
+        },
+        "statuses": {
+          "items": []
+        },
+        "id": "main"
+      }
+    ]
+  },
+  "Overlay": {
+    "items": [
+      {
+        "id": "home",
+        "type": "Custom",
+        "name": "Home",
+        "layout": {
+          "modules": [
+            {
+              "id": "clockCalendar",
+              "type": "ClockCalendar",
+              "place": {
+                "h": 8
+              }
+            },
+            {
+              "id": "quickActions",
+              "type": "QuickActions",
+              "place": {
+                "x": 4,
+                "h": 2
+              }
+            },
+            {
+              "id": "quickActions-2",
+              "type": "QuickActions",
+              "properties": {
+                "actions": [
+                  "lock",
+                  "suspend",
+                  "hibernate",
+                  "logout",
+                  "reboot",
+                  "poweroff"
+                ]
+              },
+              "place": {
+                "x": 4,
+                "y": 2,
+                "h": 2
+              }
+            },
+            {
+              "id": "systemGraphs",
+              "type": "SystemGraphs",
+              "place": {
+                "x": 4,
+                "y": 4
+              }
+            },
+            {
+              "id": "nowPlaying",
+              "type": "NowPlaying",
+              "place": {
+                "x": 8,
+                "w": 8
+              }
+            },
+            {
+              "id": "notifications",
+              "type": "Notifications",
+              "place": {
+                "x": 8,
+                "y": 4
+              }
+            },
+            {
+              "id": "notes",
+              "type": "Notes",
+              "place": {
+                "x": 12,
+                "y": 4
+              },
+              "properties": {}
+            }
+          ]
+        }
+      },
+      {
+        "id": "settings",
+        "type": "Settings"
+      },
+      {
+        "id": "keybinds",
+        "type": "Keybinds"
+      },
+      {
+        "id": "barEditor",
+        "type": "BarEditor"
+      },
+      {
+        "id": "themes",
+        "type": "Themes"
+      },
+      {
+        "id": "monitors",
+        "type": "Monitors"
+      },
+      {
+        "id": "calendarPage",
+        "type": "CalendarPage"
+      },
+      {
+        "id": "customWidgets",
+        "type": "CustomWidgets"
+      }
+    ]
+  },
+  "WorkspaceOverlay": {
+    "background": "wallpaper"
+  },
+  "Bars": {
+    "items": [
+      {
+        "id": "primary",
+        "thickness": 30,
+        "edgePadding": 8,
+        "screen": {
+          "mode": "all"
+        },
+        "widgets": {
+          "left": [
+            {
+              "id": "button",
+              "type": "Button",
+              "properties": {
+                "action": "overlay",
+                "icon": "menu",
+                "tooltip": "Overlay"
+              }
+            },
+            {
+              "id": "workspaces",
+              "type": "Workspaces"
+            },
+            {
+              "id": "window",
+              "type": "Window"
+            },
+            {
+              "id": "button-2",
+              "type": "Button",
+              "properties": {
+                "action": "edgeMenu",
+                "menu": "menu-1",
+                "icon": "",
+                "tooltip": "Menu 1"
+              }
+            },
+            {
+              "id": "button-3",
+              "type": "Button",
+              "properties": {
+                "action": "edgeMenu",
+                "menu": "menu-2"
+              }
+            },
+            {
+              "id": "spacer",
+              "type": "Spacer"
+            },
+            {
+              "id": "screenRecord",
+              "type": "ScreenRecord"
+            },
+            {
+              "id": "updates",
+              "type": "Updates"
+            }
+          ],
+          "center": [
+            {
+              "id": "time",
+              "type": "Time",
+              "properties": {
+                "showSeconds": false
+              }
+            }
+          ],
+          "right": [
+            {
+              "id": "privacy",
+              "type": "Privacy",
+              "properties": {}
+            },
+            {
+              "id": "spacer-2",
+              "type": "Spacer"
+            },
+            {
+              "id": "systemTray",
+              "type": "SystemTray"
+            },
+            {
+              "id": "volume",
+              "type": "Volume",
+              "properties": {}
+            },
+            {
+              "id": "network",
+              "type": "Network",
+              "properties": {}
+            },
+            {
+              "id": "bluetooth",
+              "type": "Bluetooth",
+              "properties": {
+                "hideWhenOff": true
+              }
+            },
+            {
+              "id": "battery",
+              "type": "Battery"
+            },
+            {
+              "id": "notifications",
+              "type": "Notifications"
+            },
+            {
+              "id": "button-4",
+              "type": "Button",
+              "properties": {
+                "tooltip": "Power"
+              }
+            }
+          ]
+        },
+        "innerPadding": 9,
+        "innerGap": 3,
+        "surface": "bar",
+        "style": {
+          "textScale": 87
+        }
+      }
+    ]
+  },
+  "EdgeMenus": {
+    "items": [
+      {
+        "id": "menu-1",
+        "name": "Menu 1",
+        "layout": {
+          "modules": [
+            {
+              "id": "notes",
+              "type": "Notes",
+              "properties": {}
+            }
+          ]
+        },
+        "edge": "top",
+        "offset": -5,
+        "gridOffset": 45,
+        "pinButton": true,
+        "close": {
+          "onLeave": false,
+          "onOutsideClick": true
+        }
+      },
+      {
+        "id": "menu-2",
+        "name": "Menu 2",
+        "layout": {
+          "moduleBorders": false,
+          "modules": [
+            {
+              "id": "chat",
+              "place": {
+                "h": 8
+              },
+              "type": "Chat"
+            }
+          ]
+        },
+        "mode": "integrated",
+        "close": {
+          "onLeave": false
+        }
+      }
+    ]
+  },
+  "Dock": {
+    "items": [
+      {
+        "id": "main",
+        "enabled": false
+      }
+    ]
+  },
+  "WindowSwitcher": {},
+  "Greeter": {
+    "layout": {
+      "modules": [
+        {
+          "id": "greeting",
+          "type": "Greeting",
+          "place": {
+            "x": 8,
+            "y": 4,
+            "w": 16
+          }
+        },
+        {
+          "id": "login",
+          "type": "Login",
+          "place": {
+            "x": 10,
+            "y": 8,
+            "w": 12,
+            "h": 2
+          }
+        },
+        {
+          "id": "session",
+          "type": "Session",
+          "place": {
+            "x": 12,
+            "y": 10,
+            "w": 8,
+            "h": 2
+          }
+        },
+        {
+          "id": "power",
+          "type": "Power",
+          "place": {
+            "x": 30,
+            "y": 17,
+            "w": 2,
+            "h": 1
+          },
+          "properties": {
+            "actions": [
+              "reboot",
+              "poweroff"
+            ]
+          }
+        }
+      ],
+      "grid": {
+        "fine": true
+      },
+      "moduleBorders": false
+    }
+  },
+  "Calendar": {},
+  "Desktop": {
+    "items": [
+      {
+        "id": "all",
+        "enabled": false,
+        "screen": {
+          "mode": "all"
+        }
+      },
+      {
+        "id": "primary",
+        "modules": [
+          {
+            "id": "greeting",
+            "type": "Greeting",
+            "place": {
+              "x": 1,
+              "y": 1,
+              "h": 2
+            }
+          },
+          {
+            "id": "notes",
+            "type": "Notes",
+            "place": {
+              "x": 1,
+              "y": 3,
+              "w": 6,
+              "h": 5
+            },
+            "properties": {}
+          }
+        ],
+        "grid": {
+          "columns": 14,
+          "rows": 8
+        }
+      },
+      {
+        "id": "dp-2",
+        "modules": [
+          {
+            "id": "palette",
+            "type": "Palette",
+            "place": {
+              "x": 8,
+              "y": 3,
+              "w": 8,
+              "h": 3
+            }
+          }
+        ],
+        "screen": {
+          "mode": "named"
+        }
+      }
+    ]
+  },
+  "WindowLook": {
+    "borders": {
+      "enabled": true
+    },
+    "shape": {
+      "enabled": true
+    },
+    "gaps": {
+      "enabled": true
+    },
+    "surfaceBlur": {
+      "enabled": false
+    },
+    "shadow": {
+      "matchShell": false,
+      "size": 4
+    }
+  },
+  "Compositor": {
+    "hyprland": {},
+    "sway": {},
+    "niri": {}
+  },
+  "Input": {
+    "keyboard": {
+      "method": {}
+    },
+    "cursor": {}
+  }
+}
