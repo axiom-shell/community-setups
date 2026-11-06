@@ -1,0 +1,19 @@
+{
+  "title": "Sane Gruvbox Theme",
+  "author": "Jupiter-Tank",
+  "description": "Simple layout with no complex menus or animations.",
+  "tags": [
+    "dark",
+    "retro",
+    "keyboard-driven",
+    "rounded"
+  ],
+  "tested": [
+    "hyprland"
+  ],
+  "fonts": [],
+  "wallpaper": {
+    "license": "MIT",
+    "source": "https://github.com/AngelJumbo/gruvbox-wallpapers/tree/main/wallpapers/minimalistic"
+  }
+}
